@@ -10,13 +10,14 @@ import multer from "multer";
 import cookieParser from "cookie-parser";
 import { fromZodError } from "zod-validation-error";
 import { checkAuthandAdmin } from "./checkAuthandAdmin";
-// import path from "path";
+import path from "path";
 import { v4 } from "uuid";
 import DOMPurify from "isomorphic-dompurify";
 import type { FileFilterCallback } from "multer";
 import type { User } from "./dtos/User.dto";
-// import type { QueryParam } from "./types/query-param";
-// import type { search } from "./types/search";
+import type { QueryParam } from "./types/query-param";
+import type { search } from "./types/search";
+import type { Blog, BlogsMap } from "./types/blog.js";
 
 
 const app = express();
@@ -147,7 +148,7 @@ app.post(
         try {
             const { title, content, tags, summary, quote, author, occupation, sections, author_desc } = req.body;
 
-            const files = req.files as { [key:string] : Express.Multer.File[]} | undefined;
+            const files = req.files as { [key: string]: Express.Multer.File[] } | undefined;
 
             const image = files?.['image']?.[0];
 
@@ -169,7 +170,7 @@ app.post(
                     .json({ error: fromZodError(result.error).message });
             }
 
-            const rowUUID:string = v4();
+            const rowUUID: string = v4();
 
             const [QueryResult] = await connection.execute(
                 "insert into Blog (id,title, content, image_url, tags, summary, quote, author, occupation,author_desc,author_image) values (?,?,?,?,?,?,?,?,?,?,?) ",
@@ -248,9 +249,9 @@ app.get("/blog", async (req: Request<{}, {}, {}, search>, res: Response) => {
     }
 
     // grouping
-    const blogsMap = {};
+    const blogsMap: BlogsMap = {};
 
-    rows.forEach(row => {
+    rows.forEach((row: Blog) => {
         if (!blogsMap[row.blog_id]) {
             blogsMap[row.blog_id] = {
                 blog_id: row.blog_id,
@@ -270,7 +271,7 @@ app.get("/blog", async (req: Request<{}, {}, {}, search>, res: Response) => {
             };
         }
         if (row.section_id) {
-            blogsMap[row.blog_id].sections.push({
+            blogsMap[row.blog_id]?.sections.push({
                 section_id: row.section_id,
                 sub_title: row.sub_title,
                 content: row.section_content,
@@ -311,7 +312,7 @@ app.get("/blog", async (req: Request<{}, {}, {}, search>, res: Response) => {
     // RELATED POSTS
     let relatedPosts = [];
     if (blog.tags) {
-        const tagsArray = blog.tags.split(',').map(t => t.trim().toLowerCase());
+        const tagsArray = blog.tags.split(',').map((t: string) => t.trim().toLowerCase());
 
         const [related] = await connection.execute(
             `SELECT title, image_url, tags 
@@ -321,7 +322,7 @@ app.get("/blog", async (req: Request<{}, {}, {}, search>, res: Response) => {
             [blog.blog_id]
         );
 
-        relatedPosts = related.filter(post => {
+        relatedPosts = related.filter((post: Blog) => {
             if (!post.tags) return false;
             const postTags = post.tags.split(',').map(t => t.trim().toLowerCase());
             return postTags.some(tag => tagsArray.includes(tag));
@@ -348,7 +349,7 @@ app.post("/comment/add", async (req, res) => {
 
         return res.status(201).json({ message: "Comment added successfully." });
 
-    } catch (err) {
+    } catch (err: any) {
         return res.status(500).json({ error: err.message });
     }
 });
@@ -365,7 +366,7 @@ app.get("/comment/:blogId", async (req: Request<QueryParam, {}, {}, {}>, res: Re
 
         res.status(200).json(rows);
 
-    } catch (err) {
+    } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
 });
